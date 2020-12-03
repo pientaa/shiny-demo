@@ -84,6 +84,8 @@ fit <- train(outcome ~ .,
 rfClasses <- predict(fit, newdata = testing)
 confusionMatrix(data = rfClasses, testing$outcome)
 
+knit_hooks$set(webgl = hook_webgl)
+webgl=TRUE
 
 shinyServer(
   function(input, output) {
@@ -98,9 +100,8 @@ shinyServer(
         
         }) 
       
-      output$webGL <- renderRglwidget({
+      getPage<-function() {
         try(rgl.close())
-        bg3d(color = "white")
         CRP <- input$CRP
         LDH <-input$LDH
         NEUTR <- input$NEUTR
@@ -124,8 +125,15 @@ shinyServer(
           radius = corr_visualize_df$size,
           legend=TRUE,
           xlab="CRP", ylab="LDH", zlab="Neutr")
-        rglwidget()
+        
+        legend3d("topright", legend = c('Death', 'Survival', 'New patient'), pch = 10, col = mycolors, cex=0.8, inset=c(0.02))
+        
+        writeWebGL( filename="3d_correlation_mean.html" ,  width=600, height=600)
+        
         rgl.close()
-      })
+        return(includeHTML("./3d_correlation_mean.html"))
+      }
+      
+      output$ui <- renderUI({getPage()})
   }
 )

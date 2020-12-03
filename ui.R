@@ -19,10 +19,7 @@ shinyUI(
       # Show a plot of the generated distribution
       mainPanel(
         textOutput("prediction"),
-        
-        #htmlOutput("plot")
-        #webGLOutput("webGL")
-        rglwidgetOutput("webGL", width = 600, height = 600)
+        htmlOutput("ui")
       )
     )
   )
