@@ -92,6 +92,7 @@ shinyServer(
       output$plot3d <- renderRglwidget({ rglwidget(scenegen()) })
       
       scenegen <- reactive({
+        rgl.open(useNULL=T)
         # make a random scene
         CRP <- input$CRP
         LDH <-input$LDH
@@ -120,7 +121,7 @@ shinyServer(
         legend3d("topright", legend = c('Death', 'Survival', 'New patient'), pch = 10, col = mycolors, cex=0.8, inset=c(0.02))
         
         scene1 <- scene3d()
-        rgl.close() # make the app window go away
+        #rgl.close() # make the app window go away
         return(scene1)
       })
   }
