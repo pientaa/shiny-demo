@@ -1,16 +1,11 @@
+library(devtools)
 library(shiny)
+library(tidyr)
+library(rgl)
+library(shinyRGL)
+
 library(readxl)
-library(summarytools)
-library(gtsummary)
-library(tidyverse)
 library(dplyr)
-library(knitr)
-library(DT)
-library(ggplot2)
-library(reshape2)
-library(gganimate)
-library(hrbrthemes)
-library( rgl )
 library(magick)
 library(tibble)
 library(caret)
@@ -76,16 +71,11 @@ set.seed(23)
 fit <- train(outcome ~ .,
              data = training,
              method = "rf",
-             metric = "ROC",
              preProc = c("center", "scale"),
              trControl = ctrl,
-             tuneGrid = rfGrid,
              ntree = 30)
 rfClasses <- predict(fit, newdata = testing)
 confusionMatrix(data = rfClasses, testing$outcome)
-
-knit_hooks$set(webgl = hook_webgl)
-webgl=TRUE
 
 shinyServer(
   function(input, output) {
@@ -96,12 +86,13 @@ shinyServer(
         NEUTR <- input$NEUTR
         new_data <- data.frame(NEUTR, LDH, CRP)
       
-        paste("Percentage chances of patient's survival:  ", predict(fit, newdata=new_data,  type = "prob")$Survival * 100)
-        
+        paste("Percentage chance of Survival: ", predict(fit, newdata=new_data,  type = "prob")$Survival * 100)
         }) 
       
-      getPage<-function() {
-        try(rgl.close())
+      output$plot3d <- renderRglwidget({ rglwidget(scenegen()) })
+      
+      scenegen <- reactive({
+        # make a random scene
         CRP <- input$CRP
         LDH <-input$LDH
         NEUTR <- input$NEUTR
@@ -128,12 +119,9 @@ shinyServer(
         
         legend3d("topright", legend = c('Death', 'Survival', 'New patient'), pch = 10, col = mycolors, cex=0.8, inset=c(0.02))
         
-        writeWebGL( filename="3d_correlation_mean.html" ,  width=600, height=600)
-        
-        rgl.close()
-        return(includeHTML("./3d_correlation_mean.html"))
-      }
-      
-      output$ui <- renderUI({getPage()})
+        scene1 <- scene3d()
+        rgl.close() # make the app window go away
+        return(scene1)
+      })
   }
 )

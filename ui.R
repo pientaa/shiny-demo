@@ -1,5 +1,9 @@
+library(devtools)
 library(shiny)
+library(rgl)
 library(shinyRGL)
+
+
 shinyUI(
   fluidPage(
     
@@ -19,7 +23,7 @@ shinyUI(
       # Show a plot of the generated distribution
       mainPanel(
         textOutput("prediction"),
-        htmlOutput("ui")
+        rglwidgetOutput("plot3d", width = 600, height = 600)
       )
     )
   )
