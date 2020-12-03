@@ -11,71 +11,14 @@ output:
     toc_float: true
 ---
 
-```{r setup,include=FALSE}
-knitr::opts_chunk$set(message = FALSE)
-knitr::opts_chunk$set(warning = FALSE)
-```
-
-## Executive summary
-
-Following report is inspired by [the article](https://www.nature.com/articles/s42256-020-0180-7), in which lactic dehydrogenase (LDH), lymphocyte and high-sensitivity C-reactive protein (hs-CRP) were used to build prediction model, which determines if patient (with COVID-19) will survive or not with more than 90% accuracy. </br> </br>
-In this report, firstly, all biomarkers are visualized with basic statistics. Then, patients distribution (age and gender) is analyzed and visualized with histograms and table that shows also time of hospitalization and number of total blood tests taken. </br>
-After pre-processing, some of patients are removed from data set, because they didn't have any test registered, which makes further analysis impossible. After that, all biomarkers summary is presented in the table. </br> </br>
-Finding which biomarkers are correlated with outcome (dead or survived) helps to take a closer look at the most important columns in the data set and their impact on actual course of illness. So there are three most correlated biomarkers:
-
-<ul>
-<b>
-  <li>(%)lymphocyte</li>
-  <li>neutrophils(%)</li>
-  <li>albumin</li>
-</b>
-</ul>
- 
- After an appropriate data cleaning, there is the prediction model build that reaches accuracy of 99%. **Lactate dehydrogenase** turned out to be the most important attribute in prediction, then **lymphocytes** comes and **neutrophils** at the third place. This makes following report reliable and consistent with the article mentioned above, where LDH is also the most important variable and lymphocyte is at the second place.
-
-```{r libraries, include=FALSE}
-library(readxl)
-library(summarytools)
-library(gtsummary)
-library(tidyverse)
-library(dplyr)
-library(knitr)
-library(DT)
-library(ggplot2)
-library(reshape2)
-library(gganimate)
-library(hrbrthemes)
-library( rgl )
-library(magick)
-library(tibble)
-library(caret)
-```
-
-```{r read_data}
-df <- read_excel("wuhan_blood_sample_data_Jan_Feb_2020.xlsx")
-```
-
-## Biomarkers
-```{r original_data_summary,message=FALSE,warning=FALSE}
-
-no_dates_df <- df %>% select(-c('Admission time', 'Discharge time', 'RE_DATE', 'PATIENT_ID', 'age', 'gender' ))
-tbl_summary(
-    no_dates_df,
-    by = outcome,
-    missing = "no"
-            ) %>%
-    add_n() %>%
-    modify_header(label = "**Biomarker**") %>%
-  modify_spanning_header(c("stat_1", "stat_2") ~ "**Final patient outcome related to the test**") %>%
-    bold_labels() 
-
-```
-
 ## Clean data set
 
 Data after cleaning:
 
 ```{r, clean_dataset}
+
+df <- read_excel("wuhan_blood_sample_data_Jan_Feb_2020.xlsx")
+
 
 patients_df <- df %>% group_by(`Admission time`, `Discharge time`, gender, age, outcome) %>%
 summarise(PATIENT_ID = sum(PATIENT_ID, na.rm = TRUE), `Total records` = n()) 
@@ -111,238 +54,26 @@ last_test_df <- df %>%
   summarise_at(vars(`Hypersensitive cardiac troponinI`:creatinine), function(x) last(x,order_by = is.na(x)))
 
 
-cleaned_df <- last_test_df %>% ungroup() %>% select(PATIENT_ID, outcome, age, gender, hemoglobin, `eosinophils(%)`, `Alkaline phosphatase`, albumin, `basophil(%)`, `Total bilirubin`, `Platelet count`, `monocytes(%)`, `neutrophils(%)`, `total protein`, `mean corpuscular volume`, hematocrit, `White blood cell count`, `mean corpuscular hemoglobin concentration`, Urea, `lymphocyte count`, `Red blood cell count`, `Eosinophil count`, `neutrophils count`, `Direct bilirubin`, `(%)lymphocyte`, `Total cholesterol`, `aspartate aminotransferase`, `Uric acid`, `HCO3-`, `Lactate dehydrogenase`, `monocytes count`, globulin, `γ-glutamyl transpeptidase`, `basophil count(#)`, `mean corpuscular hemoglobin`, `glutamic-pyruvic transaminase`, eGFR, creatinine) %>% filter_all(function(x) !is.na(x)) 
+cleaned_df <- last_test_df %>% ungroup() %>% select(PATIENT_ID, outcome, age, gender, hemoglobin, `eosinophils(%)`, `Alkaline phosphatase`, albumin, `basophil(%)`, `Total bilirubin`, `Platelet count`, `monocytes(%)`, `neutrophils(%)`, `total protein`, `mean corpuscular volume`, hematocrit, `White blood cell count`, `mean corpuscular hemoglobin concentration`, Urea, `lymphocyte count`, `Red blood cell count`, `Eosinophil count`, `neutrophils count`, `Direct bilirubin`, `(%)lymphocyte`, `Total cholesterol`, `aspartate aminotransferase`, `Uric acid`, `HCO3-`, `Lactate dehydrogenase`, `monocytes count`, globulin, `γ-glutamyl transpeptidase`, `basophil count(#)`, `mean corpuscular hemoglobin`, `glutamic-pyruvic transaminase`, eGFR, creatinine, `High sensitivity C-reactive protein`) %>% filter_all(function(x) !is.na(x)) 
 
-
-tbl_summary(
-    cleaned_df %>% ungroup() %>% select(-PATIENT_ID),
-    by = outcome
-) %>%
-    add_n() %>%
-    modify_header(label = "") %>%
-    add_overall() %>%
-    bold_labels() 
 
 ```
-
-### Removed data
-
-It's good to note, that there are patients, who didn't have any test taken.
-
-```{r, removed_data}
-patients_df %>% filter(`Total blood tests`==0) 
-```
-
-
-## Patients summary
-```{r, data_transformed, warning=FALSE}
-
-patients_summary <- patients_df %>% ungroup() %>% select(-c(age, PATIENT_ID))
-
-tbl_summary(
-    patients_summary,
-    by = outcome,
-    label = gender ~ "Gender",
-) %>%
-    add_n() %>%
-    modify_header(label = "") %>%
-    add_overall() %>%
-    bold_labels() 
-
- ggplot(patients_df, aes(x=age,fill=gender)) + geom_histogram(binwidth = 1) + facet_grid(. ~ gender) + scale_x_continuous(name="Age", limits=c(min(df$age), max(df$age)), breaks = seq(0, 100, by=10)) + scale_y_continuous(name = "Number of patients", limits = c(0,10), breaks = seq(0,10, by=1)) +
-    theme_minimal()
-```
-
-### Grouped by outcome, age and gender
-```{r, gender_distribution, warning=FALSE}
- ggplot(patients_df, aes(x=age,fill=outcome)) + geom_histogram(binwidth = 1) + facet_grid(outcome ~ gender) + scale_x_continuous(name="Age", limits=c(min(df$age), max(df$age)), breaks = seq(0, 100, by=10)) + scale_y_continuous(name = "Number of patients", limits = c(0,9), breaks = seq(0,9, by=1)) +
-    theme_minimal()
-```
-
-### Grouped by outcome and hospitalization duration
-```{r, hospitalization_duration, warning=FALSE}
-
-ggplot(patients_df, aes(x=`Days in hospital`, fill=outcome)) + geom_histogram(binwidth = 1) + facet_grid(. ~ outcome)  + ylab("Number of patients") +
-    theme_minimal()
-
-```
-
-### Grouped by outcome and total blood tests taken
-```{r, total_blood_tests, warning=FALSE}
-
-ggplot(patients_df, aes(x=`Total blood tests`, fill=outcome)) + geom_histogram(binwidth = 1) + facet_grid(. ~ outcome)  + ylab("Number of patients") +
-  scale_x_continuous(name="Total blood tests", limits=c(0, 60), breaks = seq(0, 60, by=10)) +
-   scale_y_continuous(name = "Number of patients", limits = c(0,20), breaks = seq(0,20, by=2)) +
-    theme_minimal()
-
-```
-
-### Finding correlation
-
-Finding correlation between outcome and other variables.
-
-```{r, find_cor}
-cor_df <-cleaned_df
-
-cor_df$outcome<-ifelse(cor_df$outcome=='Death', 1, 0)
-cor_df$gender<-ifelse(cor_df$gender=='Male', 1, 0)
-
-cor_df <- cor_df %>% rename(isMale=gender)
-cor_df <- cor_df %>% rename(Death=outcome)
-
-cor_df <- cor_df %>% select (-PATIENT_ID)
-
-corrMatrix <- cor(cor_df[sapply(cor_df, is.numeric)], use='pairwise.complete.obs')
-
-correlation_df <- as.data.frame(corrMatrix)
-
-correlation_df %>% rownames_to_column('variable') %>% filter(variable != 'Death') %>% select(variable, Death) %>% mutate(Death = abs(Death)) %>%
-  arrange(desc(Death)) %>%
-  rename(`Outcome correlation` = Death) %>%
-  head(10) 
-
-```
-
-### Use of correlation
-
-In following section, we will use 3 biomarkers that are most correlated to outcome and visualize theirs mean values among each patient at 3D graph. So we take only these patients who had all of these 3 biomarkers tested at least once. If somebody was tested more than once, then the last value will be taken.
-
-```{r, use_correlation_mean_value ,webgl=TRUE,results='hide'}
-corr_visualize_df  <- cleaned_df
-
-mycolors <- c('royalblue1', 'darkcyan')
-corr_visualize_df$color <- mycolors[ as.numeric(corr_visualize_df$outcome) ]
-
-par(mar=c(0,0,0,0))
-plot3d( 
-    x=corr_visualize_df$`neutrophils(%)`, y=corr_visualize_df$`(%)lymphocyte`, z=corr_visualize_df$albumin, 
-    col = corr_visualize_df$color, 
-    type = 's', 
-    radius = 1,
-    legend=TRUE,
-    xlab="Neutrophils(%)", ylab="Lymphocyte(%)", zlab="Albumin")
-legend3d("topright", legend = c('Death', 'Survival'), pch = 10, col = mycolors, cex=0.8, inset=c(0.02))
-
-writeWebGL( filename="3d_correlation_mean.html" ,  width=600, height=600)
-```
-
-
-```{r, show_correlation_mean}
-htmltools::includeHTML("./3d_correlation_mean.html")
-```
-
-## Common biomarkers' change in time
-
-In following section there are 3 animations that show how most common biomarkers' tests results (which means that these biomarkers were tested most often among all the patients) varied during hospitalization.
-```{r, most_common_biomarkers} 
-biomarker_popularity <- df %>% group_by(PATIENT_ID, outcome) %>% summarise_at(vars(`Hypersensitive cardiac troponinI`:creatinine), function(x) sum(!is.na(x)))
-biomarker_popularity$sum_of_single_test <- rowSums(biomarker_popularity %>% ungroup() %>% select(-PATIENT_ID, -outcome))
-
-most_tested_death <- biomarker_popularity %>% select(sum_of_single_test, outcome, `neutrophils(%)`,  `(%)lymphocyte`, albumin) %>% filter(outcome=='Death') %>% arrange(desc(sum_of_single_test)) %>% head(10)
-most_tested_survival <- biomarker_popularity %>% select(sum_of_single_test, outcome, `neutrophils(%)`,  `(%)lymphocyte`, albumin) %>% filter(outcome=='Survival') %>% arrange(desc(sum_of_single_test)) %>% head(10)
-
-foo <- rbind(most_tested_death, most_tested_survival)
-
-patients_tests <- merge(foo %>% ungroup() %>% select(PATIENT_ID), df %>% ungroup() %>% select(PATIENT_ID, RE_DATE,`neutrophils(%)`,  `(%)lymphocyte`, albumin, outcome),  by="PATIENT_ID") %>% filter(!is.na(`neutrophils(%)`) |  !is.na(`(%)lymphocyte`) | !is.na(albumin))
-
-lymphocyte_seq <- patients_tests %>% filter(!is.na(`(%)lymphocyte`)) 
-
-lymphocyte_seq %>% mutate(PATIENT_ID=as.factor(PATIENT_ID)) %>%
-  ggplot( aes(x=RE_DATE, y=`(%)lymphocyte`, group=PATIENT_ID, color=PATIENT_ID)) +
-    geom_line() +
-    geom_point() +
-  facet_grid(rows=vars(outcome)) +
-    ggtitle("Lymphocyte (%) during patient hospitalization") +
-    theme_ipsum() +
-    ylab("Lymphocyte (%)") +
-    transition_reveal(RE_DATE)
-
-#anim_save("lymphocyte_seq.gif")
-
-neutrophils_seq <- patients_tests %>% filter(!is.na(`neutrophils(%)`)) 
-
-neutrophils_seq %>% mutate(PATIENT_ID=as.factor(PATIENT_ID)) %>%
-  ggplot( aes(x=RE_DATE, y=`neutrophils(%)`, group=PATIENT_ID, color=PATIENT_ID)) +
-    geom_line() +
-    geom_point() +
-  facet_grid(rows=vars(outcome)) +
-    ggtitle("Neutrophils (%) during patient hospitalization") +
-    theme_ipsum() +
-    ylab("Neutrophils (%)") +
-    transition_reveal(RE_DATE)
-
-#anim_save("neutrophils_seq.gif")
-
-albumin_seq <- patients_tests %>% filter(!is.na(albumin)) 
-
-albumin_seq %>% mutate(PATIENT_ID=as.factor(PATIENT_ID)) %>%
-  ggplot( aes(x=RE_DATE, y=albumin, group=PATIENT_ID, color=PATIENT_ID)) +
-    geom_line() +
-    geom_point() +
-  facet_grid(rows=vars(outcome)) +
-    ggtitle("Albumin value during patient hospitalization") +
-    theme_ipsum() +
-    ylab("Albumin") +
-    transition_reveal(RE_DATE)
-
-#anim_save("albumin_seq.gif")
-
-```
-
-## Prediction model
-
-In order to build an appropriate model, there is a need for the data cleaning. There shouldn't be any `NA` in the data set. Moreover, every considered patient should have all of considered biomarkers tested at least once. For building the model purpose, the last existing test of each biomarker for each patient was taken. As it was shown before, many biomarkers are unsuitable because of containing too many `NA` in theirs columns. Which means that they should be removed from the data set. Below is the list of remaining columns:
-
-<ul>
-<b>
-  <li>outcome</li>
-  <li>age</li>
-  <li>gender</li>
-  <li>hemoglobin</li>
-  <li>eosinophils(%)</li>
-  <li>Alkaline phosphatas</li>
-  <li>albumin</li>
-  <li>basophil(%)</li>
-  <li>Total bilirubin</li>
-  <li>Platelet count</li>
-  <li>monocytes(%)</li>
-  <li>neutrophils(%)</li>
-  <li>total protein</li>
-  <li>mean corpuscular volume</li>
-  <li>hematocrit</li>
-  <li>White blood cell count</li>
-  <li>mean corpuscular hemoglobin concentration</li>
-  <li>Urea</li>
-  <li>lymphocyte count</li>
-  <li>Red blood cell count</li>
-  <li>Eosinophil count</li>
-  <li>neutrophils count</li>
-  <li>Direct bilirubin</li>
-  <li>(%)lymphocyte</li>
-  <li>Total cholesterol</li>
-  <li>aspartate aminotransferase</li>
-  <li>Uric acid</li>
-  <li>HCO3-</li>
-  <li>Lactate dehydrogenase</li>
-  <li>monocytes count</li>
-  <li>globulin</li>
-  <li>γ-glutamyl transpeptidase</li>
-  <li>basophil count(#)</li>
-  <li>mean corpuscular hemoglobin</li>
-  <li>glutamic-pyruvic transaminase</li>
-  <li>eGFR</li>
-  <li>creatinine</li>
-  </b>
-</ul>  
 
 ```{r,prediction_model} 
-cleaned_df <- cleaned_df %>% select(-PATIENT_ID)
+
+cleaned_df <- last_test_df %>% ungroup() %>% select(outcome, `neutrophils(%)`, `Lactate dehydrogenase`, `High sensitivity C-reactive protein`) %>% filter_all(function(x) !is.na(x))  %>%
+  rename(CRP=`High sensitivity C-reactive protein`, LDH=`Lactate dehydrogenase`, NEUTR= `neutrophils(%)`)
+#cleaned_df <- cleaned_df %>% select(-PATIENT_ID)
 set.seed(23)
 inTraining <- 
     createDataPartition(
         y = cleaned_df$outcome,
         p = .70,
         list = FALSE)
+CRP <- 100
+LDH <-200
+NEUTR <- 50
+lol_df <- data.frame(CRP, LDH, NEUTR)
 
 
 training <- cleaned_df[ inTraining,]
@@ -366,9 +97,10 @@ fit <- train(outcome ~ .,
              ntree = 30)
 rfClasses <- predict(fit, newdata = testing)
 confusionMatrix(data = rfClasses, testing$outcome)
+
+predict(fit, newdata=lol_df,  type = "prob")
 ```
 </br>
-99% of accuracy means that the model works very well. That gives only one false positive, which is definitely better than a false negative. There is no need to improve the model.
 
 ### Importance of attributes
 
