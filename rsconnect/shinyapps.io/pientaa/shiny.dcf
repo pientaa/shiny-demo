@@ -5,8 +5,8 @@ account: pientaa
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3347371
-bundleId: 3939655
+bundleId: 3939798
 url: https://pientaa.shinyapps.io/shiny/
-when: 1607024801.33039
+when: 1607026939.96781
 asMultiple: FALSE
 asStatic: FALSE
