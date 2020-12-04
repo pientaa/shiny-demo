@@ -93,26 +93,24 @@ shinyServer(
         CRP <- input$CRP
         LDH <-input$LDH
         NEUTR <- input$NEUTR
-        color <- 'yellow'
+        color <- 'New patient'
         new_data <- data.frame(NEUTR, LDH, CRP)
         outcome <- predict(fit, newdata=new_data)
         size <- 40
         new_data <- data.frame(outcome, NEUTR, LDH, CRP, color, size)
 
         corr_visualize_df  <- cleaned_df
-        mycolors <- c('royalblue1', 'darkcyan')
-        corr_visualize_df$color <- mycolors[ as.numeric(corr_visualize_df$outcome) ]
+        corr_visualize_df$color <- corr_visualize_df$outcome
         corr_visualize_df$size <- 20
         corr_visualize_df <- rbind(corr_visualize_df, new_data)
-        mycolors <- c('royalblue1', 'darkcyan', 'yellow')
         
         par(mar=c(0,0,0,0))
         
         plot1 <- plot_ly(x = corr_visualize_df$CRP,
                          y = corr_visualize_df$LDH,
                          z = corr_visualize_df$NEUTR) %>%
-          add_markers(color = ~ corr_visualize_df$outcome,
-                      size = ~ corr_visualize_df$size,
+          add_markers(color = corr_visualize_df$color,
+                      size = corr_visualize_df$size,
           ) %>%
           layout(scene = list(
             xaxis = list(title = "CRP"),
