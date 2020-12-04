@@ -1,17 +1,16 @@
-library(devtools)
 library(shiny)
 library(tidyr)
-library(rgl)
-library(shinyRGL)
-install.packages("randomForest")
 library(randomForest)
 library(readxl)
 library(dplyr)
 library(magick)
 library(tibble)
 library(caret)
+library(e1071)
+library(plotly)
 
 df <- read_excel("wuhan_blood_sample_data_Jan_Feb_2020.xlsx")
+df <- df %>% select(-c(34,37,68))
 
 patients_df <- df %>% group_by(`Admission time`, `Discharge time`, gender, age, outcome) %>%
   summarise(PATIENT_ID = sum(PATIENT_ID, na.rm = TRUE), `Total records` = n()) 
@@ -87,43 +86,43 @@ shinyServer(
         NEUTR <- input$NEUTR
         new_data <- data.frame(NEUTR, LDH, CRP)
       
-        paste("Percentage chance of Survival: ", predict(fit, newdata=new_data,  type = "prob")$Survival * 100)
+        paste("Chance of Survival: ", round(predict(fit, newdata=new_data,  type = "prob")$Survival * 100, digits = 0), "%")
         }) 
       
-      output$plot3d <- renderRglwidget({ rglwidget(scenegen()) })
-      
-      scenegen <- reactive({
-        rgl.open(useNULL=T)
-        # make a random scene
+      output$plot <- renderPlotly({
         CRP <- input$CRP
         LDH <-input$LDH
         NEUTR <- input$NEUTR
         color <- 'yellow'
         new_data <- data.frame(NEUTR, LDH, CRP)
         outcome <- predict(fit, newdata=new_data)
-        size <- 16
+        size <- 40
         new_data <- data.frame(outcome, NEUTR, LDH, CRP, color, size)
-        
+
         corr_visualize_df  <- cleaned_df
         mycolors <- c('royalblue1', 'darkcyan')
         corr_visualize_df$color <- mycolors[ as.numeric(corr_visualize_df$outcome) ]
-        corr_visualize_df$size <- 6
+        corr_visualize_df$size <- 20
         corr_visualize_df <- rbind(corr_visualize_df, new_data)
         mycolors <- c('royalblue1', 'darkcyan', 'yellow')
+        
         par(mar=c(0,0,0,0))
-        plot3d( 
-          x=corr_visualize_df$CRP, y=corr_visualize_df$LDH, z=corr_visualize_df$NEUTR, 
-          col = corr_visualize_df$color, 
-          type = 's', 
-          radius = corr_visualize_df$size,
-          legend=TRUE,
-          xlab="CRP", ylab="LDH", zlab="Neutr")
         
-        legend3d("topright", legend = c('Death', 'Survival', 'New patient'), pch = 10, col = mycolors, cex=0.8, inset=c(0.02))
+        plot1 <- plot_ly(x = corr_visualize_df$CRP,
+                         y = corr_visualize_df$LDH,
+                         z = corr_visualize_df$NEUTR) %>%
+          add_markers(color = ~ corr_visualize_df$outcome,
+                      size = ~ corr_visualize_df$size,
+          ) %>%
+          layout(scene = list(
+            xaxis = list(title = "CRP"),
+            yaxis = list(title = "LDH"),
+            zaxis = list(title = "NEUTR"),
+            legend = list(orientation = 'h')
+          ))
         
-        scene1 <- scene3d()
-        #rgl.close() # make the app window go away
-        return(scene1)
-      })
+          })
+
+      
   }
 )
